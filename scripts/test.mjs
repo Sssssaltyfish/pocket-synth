@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';import worker,{resourceUri,widgetHtml,parsePatch}from'../worker/index.js';
+const call=async(method,params={},auth=false)=>worker.fetch(new Request('https://example.test/mcp',{method:'POST',headers:auth?{'oai-authenticated-user-id':'test-user'}:{},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})}));
+const init=await(await call('initialize')).json();assert.equal(init.result.capabilities.resources instanceof Object,true);
+const list=await(await call('tools/list')).json();assert.equal(list.result.tools[0]._meta.ui.resourceUri,resourceUri);
+const resource=await(await call('resources/read',{uri:resourceUri})).json();assert.equal(resource.result.contents[0].mimeType,'text/html;profile=mcp-app');assert.equal(resource.result.contents[0].text,widgetHtml);
+assert.equal((await call('tools/call',{name:'open_synth'})).status,401);
+const output=await(await call('tools/call',{name:'open_synth'},true)).json();assert.equal(output.result.structuredContent.patch.attack,2.4);assert.equal(output.result.structuredContent.patch.volume,.075);
+const invalid=await(await call('tools/call',{name:'open_synth',arguments:{patch:{volume:900}}},true)).json();assert.equal(invalid.result.isError,true);
+assert.throws(()=>parsePatch({unknown:1}));assert.throws(()=>parsePatch({cutoff:NaN}));assert.equal(parsePatch({waveform:'sine',cutoff:800}).cutoff,800);
+assert.equal((await worker.fetch(new Request('https://example.test/mcp'))).status,405);
+console.log('PASS: MCP discovery, initialization, resource content/metadata, identity requirement, defaults, patch validation, and methods');
