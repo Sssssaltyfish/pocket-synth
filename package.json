@@ -6,7 +6,7 @@
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node scripts/test-v3.mjs && node scripts/test-lifecycle.mjs",
+    "test": "node scripts/test-v3.mjs && node scripts/test-lifecycle.mjs && node scripts/test-native-fallback.mjs",
     "dev": "node scripts/preview.mjs"
   },
   "dependencies": {

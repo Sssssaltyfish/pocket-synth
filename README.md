@@ -6,7 +6,7 @@ A layered browser instrument and ChatGPT MCP app. The standalone `/` frontend an
 
 Pinned official `@strudel/core` + `@strudel/mini` 1.2.6, `@strudel/webaudio` + SuperDough 1.3.0. Mini-notation produces live Strudel Patterns; the official **Cyclist** scheduler queries those patterns and sends haps to official **webaudioOutput / SuperDough**. The former custom oscillator renderer is removed. SuperDough implements oscillator synthesis, FM, envelopes, filters, panning, echo and AudioWorklet distortion/LFO. The application adds only validation, control mapping, master attenuation/compression, analyser, and lifecycle management.
 
-This is a web instrument/plugin, not a VST/AU binary. Arbitrary JavaScript evaluation, remote samples, microphone access and external AI services are not enabled. Worklets ship inside the local bundle as data URLs; no external CDN is needed. Modern secure-context browsers with Web Audio and AudioWorklet support are required. A host CSP that prohibits embedded worklets will block playback; startup reports an error rather than pretending to play.
+This is a web instrument/plugin, not a VST/AU binary. Arbitrary JavaScript evaluation, remote samples, microphone access and external AI services are not enabled. Worklets ship inside the local bundle as data URLs; no external CDN is needed. The app probes data: AudioWorklet support on Play and automatically falls back to native Web Audio oscillators, filters, FM, shapers, delay, and Strudel Cyclist scheduling when an embedding host blocks data: worklets. The status indicates compatible mode. Modern secure-context browsers with Web Audio support are required. The fallback is an approximation of SuperDough, not timbrally identical.
 
 ## Features
 
@@ -53,3 +53,7 @@ These checks do not replace real browser/audio-device tests. Browser QA status a
 AGPL-3.0-or-later. See COPYING. Integration modified October 5, 2026. Strudel/SuperDough copyright belongs to their contributors; notices remain in bundled code and dependency sources. `/source.tar.gz` supplies this application, build/test scripts, lockfile, and runtime dependency sources/licenses. Rebuild using the pinned lockfile with `npm ci`. No credentials, account state or saved patches are included.
 
 Official references: https://strudel.cc/technical-manual/project-start/ and https://strudel.cc/learn/synths/
+
+## Embedded-host AudioWorklet fallback (2026-10-09)
+
+ChatGPT iframe policies may block embedded `data:` worklet module scripts. The first Play probes worklet support and selects either original SuperDough or a worklet-free Web Audio synthesizer. Both use the official Cyclist pattern scheduler. The fallback supports envelopes, FM, low-pass/resonance, drive, LFO, stereo panning, tempo echo and capped polyphony; it cleans up voices on Stop/Panic. `npm test` includes the three-layer Reactor Breach stress-patch fallback test. Audio-worklet playback and speaker output in the actual ChatGPT host still require manual end-to-end QA after deploying this source.
