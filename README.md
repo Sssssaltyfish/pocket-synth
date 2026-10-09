@@ -6,7 +6,7 @@ A layered browser instrument and ChatGPT MCP app. The standalone `/` frontend an
 
 Pinned official `@strudel/core` + `@strudel/mini` 1.2.6, `@strudel/webaudio` + SuperDough 1.3.0. Mini-notation produces live Strudel Patterns; the official **Cyclist** scheduler queries those patterns and sends haps to official **webaudioOutput / SuperDough**. The former custom oscillator renderer is removed. SuperDough implements oscillator synthesis, FM, envelopes, filters, panning, echo and AudioWorklet distortion/LFO. The application adds only validation, control mapping, master attenuation/compression, analyser, and lifecycle management.
 
-This is a web instrument/plugin, not a VST/AU binary. Arbitrary JavaScript evaluation, remote samples, microphone access and external AI services are not enabled. Worklets ship inside the local bundle as data URLs; no external CDN is needed. The app probes data: AudioWorklet support on Play and automatically falls back to native Web Audio oscillators, filters, FM, shapers, delay, and Strudel Cyclist scheduling when an embedding host blocks data: worklets. The status indicates compatible mode. Modern secure-context browsers with Web Audio support are required. The fallback is an approximation of SuperDough, not timbrally identical.
+This is a web instrument/plugin, not a VST/AU binary. Arbitrary JavaScript evaluation, remote samples, microphone access and external AI services are not enabled. The build extracts the exact worklet bytes from the pinned SuperDough and Supradough distributions into content-hashed `/worklets/*.js` assets; no external CDN is needed. Modern secure-context browsers with Web Audio and AudioWorklet support are required. The widget loads these scripts from the MCP server over HTTPS with credential-free CORS. If loading still fails, startup reports the failed module and URL instead of switching to an approximate synthesizer.
 
 ## Features
 
@@ -22,7 +22,7 @@ Patch storage is browser/device-local, not a cloud sync service. Export is the p
 
 ## Compatibility and migration from v2
 
-The private Site, plugin, `open_synth`, `create_sound`, `get_sound_examples`, and `ui://pocket-synth/sound-designer-v2.html` resource identity remain stable. The versioned resource URI intentionally stays unchanged so older chat references continue working. The legacy `open_synth` tool retains its original limited pad interface; `create_sound` opens the new instrument. Existing v2 definitions/imports validate unchanged.
+The private Site, plugin and `open_synth`, `create_sound`, `get_sound_examples` tool identities remain stable. New widgets use `ui://pocket-synth/sound-designer-v3-worklets.html` so hosts can load the updated resource metadata; `resources/read` still accepts the old `ui://pocket-synth/sound-designer-v2.html` URI. The legacy `open_synth` tool retains its original limited pad interface; `create_sound` opens the new instrument. Existing v2 definitions/imports validate unchanged.
 
 Timbral differences are intentional because v3 uses the actual Strudel engine rather than v2's approximation:
 - `fm` maps to SuperDough FM index and `fmRatio` to harmonicity; modulation index is relative to modulator frequency
@@ -35,6 +35,16 @@ Timbral differences are intentional because v3 uses the actual Strudel engine ra
 - Playback loops by default; disable Loop to stop at the `cycles` phrase length
 
 No claim of bit-identical v2 sound is made. Each parameter remains inspectable in the patch definition.
+
+## Original-backend worklet loading
+
+`create_sound` uses only the official Strudel/SuperDough output path. There is no automatic native-oscillator fallback. The upstream FM, envelopes, gain staging, filter/distortion order, LFO and echo implementations and the application's master output chain are unchanged.
+
+The application calls `initAudio({disableWorklets:true, maxPolyphony:48})` to skip **only the upstream data-URL loader**, then awaits both packaged official worklets with its own loader before starting Cyclist. `disableWorklets` does not disable effects: the same processors are registered from the static files. Registrations are cached per AudioContext and URL; failures are evicted so the next Play can retry without re-registering successful modules. No synthesizer/processor DSP is rewritten.
+
+The server supplies the asset origin in the in-chat HTML rather than resolving against the sandbox's origin. Both `_meta.ui.csp` and the ChatGPT compatibility `_meta["openai/widgetCSP"]` allow only that asset origin. Worklet routes return JavaScript MIME, credential-free CORS, immutable hashed URLs, and actual 404s for missing modules. Only code assets are public; data-tool authentication is unchanged. The standalone preview uses the same Worker router.
+
+By default the asset origin is the MCP request's origin. For a reverse proxy that exposes a different public origin, set the server environment binding `POCKET_SYNTH_ASSET_ORIGIN` to that HTTPS origin (HTTP loopback is accepted for local development). It must serve the same `/worklets/` files without login redirects or cookies. This is server configuration, never a patch parameter. Updating source alone does not update an installed plugin: deploy the rebuilt `dist` and load a new widget to use the new resource and CSP metadata.
 
 ## Build and verification
 
@@ -53,7 +63,3 @@ These checks do not replace real browser/audio-device tests. Browser QA status a
 AGPL-3.0-or-later. See COPYING. Integration modified October 5, 2026. Strudel/SuperDough copyright belongs to their contributors; notices remain in bundled code and dependency sources. `/source.tar.gz` supplies this application, build/test scripts, lockfile, and runtime dependency sources/licenses. Rebuild using the pinned lockfile with `npm ci`. No credentials, account state or saved patches are included.
 
 Official references: https://strudel.cc/technical-manual/project-start/ and https://strudel.cc/learn/synths/
-
-## Embedded-host AudioWorklet fallback (2026-10-09)
-
-ChatGPT iframe policies may block embedded `data:` worklet module scripts. The first Play probes worklet support and selects either original SuperDough or a worklet-free Web Audio synthesizer. Both use the official Cyclist pattern scheduler. The fallback supports envelopes, FM, low-pass/resonance, drive, LFO, stereo panning, tempo echo and capped polyphony; it cleans up voices on Stop/Panic. `npm test` includes the three-layer Reactor Breach stress-patch fallback test. Audio-worklet playback and speaker output in the actual ChatGPT host still require manual end-to-end QA after deploying this source.
